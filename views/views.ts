@@ -1,5 +1,6 @@
 import { EventBus } from "../infra/eventBus";
 import { OpenOrdersView } from "./openOrdersView";
+import { TradesView } from "./tradesView";
 import type { Event } from "../core/types";
 
 /**
@@ -38,7 +39,9 @@ export function createViews({
   batchSize = 1,
 }: ViewsDeps) {
   const openOrdersView = new OpenOrdersView();
+  const tradesView = new TradesView();
   openOrdersView.applyAll(initialEvents);
+  tradesView.applyAll(initialEvents);
 
   /**
    * Starts the projector loop, applying events from the EventBus to views.
@@ -54,15 +57,17 @@ export function createViews({
   }
 
   /**
-   * Applies a single event to the openOrdersView.
+   * Applies a single event to the projections.
    * @param event - The event to apply.
    */
   function applyEvent(event: Event) {
     openOrdersView.apply(event);
+    tradesView.apply(event);
   }
 
   return {
     openOrdersView,
+    tradesView,
     start,
   };
 }
