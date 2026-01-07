@@ -44,7 +44,7 @@ export function composeApp() {
   const history: Event[] = wal.replay();
   console.log(`🔁 Replaying ${history.length} events from WAL`);
   for (const event of history) {
-    engine.process(event);
+    engine.process(event, { mode: "replay" });
   }
 
   // ---- Start projections ----

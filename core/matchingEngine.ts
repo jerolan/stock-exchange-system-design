@@ -18,15 +18,22 @@ type MatchingEngineDeps = {
 };
 
 /**
+ * Processing mode for events.
+ * - live: persists and publishes events
+ * - replay: rebuilds in-memory state only
+ */
+type ProcessMode = "live" | "replay";
+
+/**
  * Core matching engine for the stock exchange demo.
  *
  * Implements deterministic price-time matching, crash recovery via WAL,
  * and event publication via EventBus. Single-threaded, synchronous, no I/O in hot path.
  */
 export class MatchingEngine {
-  private book = new OrderBook();
-  private wal: WAL;
-  private eventBus: EventBus;
+  private readonly book = new OrderBook();
+  private readonly wal: WAL;
+  private readonly eventBus: EventBus;
 
   /**
    * Constructs a new MatchingEngine instance.
@@ -47,17 +54,41 @@ export class MatchingEngine {
    * - Ignores TRADE events (they are outputs, not inputs).
    * - NEW_ORDER triggers matching; CANCEL_ORDER removes order.
    */
-  process(event: Event) {
+  process(event: Event, options: { mode?: ProcessMode } = {}) {
+    const mode: ProcessMode = options.mode ?? "live";
+
     switch (event.type) {
-      case "NEW_ORDER":
+      case "NEW_ORDER": {
+        if (mode === "live") {
+          this.wal.append(event);
+          this.eventBus.publish(event);
+        }
+
         this.book.add(event.order);
-        this.match();
-        break;
-      case "CANCEL_ORDER":
+        this.match(mode);
+        return;
+      }
+
+      case "CANCEL_ORDER": {
+        if (mode === "live") {
+          this.wal.append(event);
+          this.eventBus.publish(event);
+        }
+
         this.book.cancel(event.orderId);
-        break;
-      default:
-        break;
+        return;
+      }
+
+      // IMPORTANT: Matching engine does NOT process TRADE as input.
+      // Trades are outputs created by match().
+      case "TRADE": {
+        return;
+      }
+
+      default: {
+        const _exhaustive: never = event;
+        return _exhaustive;
+      }
     }
   }
 
@@ -69,7 +100,7 @@ export class MatchingEngine {
    * - Executes trades in memory, emits TRADE events to WAL and EventBus.
    * - Removes fully filled orders from the book.
    */
-  private match() {
+  private match(mode: ProcessMode) {
     while (true) {
       const buy = this.book.bestBuy();
       const sell = this.book.bestSell();
@@ -96,11 +127,12 @@ export class MatchingEngine {
         price,
       };
 
-      // WAL = truth
-      this.wal.append(trade);
-
-      // EventBus = decoupling
-      this.eventBus.publish(trade);
+      if (mode === "live") {
+        // WAL = truth
+        this.wal.append(trade);
+        // EventBus = decoupling
+        this.eventBus.publish(trade);
+      }
 
       // Remove fully filled orders
       if (buy.qty === 0) {
