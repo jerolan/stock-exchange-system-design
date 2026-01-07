@@ -42,8 +42,10 @@ export function createServer({
       // ---- READ MODEL: Open Orders ----
       if (req.method === "GET" && url.pathname === "/orders/open") {
         const side = url.searchParams.get("side");
+        const symbol = url.searchParams.get("symbol") ?? undefined;
         const orders = openOrdersView.list({
           side: side === "BUY" || side === "SELL" ? side : undefined,
+          symbol,
         });
         return new Response(
           JSON.stringify(
