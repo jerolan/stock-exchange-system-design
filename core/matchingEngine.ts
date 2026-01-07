@@ -107,7 +107,22 @@ export class MatchingEngine {
       if (!buy || !sell) return;
       if (buy.price < sell.price) return;
 
+      // If either side has non-positive quantity, remove it and continue.
+      if (buy.qty <= 0) {
+        this.book.cancel(buy.id);
+        continue;
+      }
+
+      if (sell.qty <= 0) {
+        this.book.cancel(sell.id);
+        continue;
+      }
+
       const qty = Math.min(buy.qty, sell.qty);
+
+      // Defensive: if qty is zero (shouldn't happen after guards), break to avoid tight loop.
+      if (qty <= 0) return;
+
       const price = sell.price;
 
       // Execute trade in memory
