@@ -1,0 +1,13 @@
+{
+  "name": "stock-exchange",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "serve": "bash -c 'while true; do bun --hot run main.ts; sleep 1; done'"
+  }
+}
