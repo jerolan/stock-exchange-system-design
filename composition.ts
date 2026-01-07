@@ -4,6 +4,7 @@ import { MatchingEngine } from "./core/matchingEngine";
 import { createViews } from "./views/views";
 import { createServer } from "./api/server";
 import type { Event } from "./core/types";
+import { startOrderGenerator } from "./generator/orderGenerator";
 
 /**
  * Composition Root for Stock Exchange Matching Engine.
@@ -48,6 +49,14 @@ export function composeApp() {
 
   // ---- Start projections ----
   views.start();
+
+  // ---- Start order generator (demo) ----
+  startOrderGenerator(engine, {
+    symbol: "DEMO",
+    basePrice: 100,
+    spread: 5,
+    intervalMs: 100, // ← ajusta para más o menos ruido
+  });
 
   // ---- Server ----
   const server = createServer({
