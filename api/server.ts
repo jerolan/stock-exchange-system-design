@@ -1,4 +1,5 @@
 import { OpenOrdersView } from "../views/openOrdersView";
+import { TradesView } from "../views/tradesView";
 import { EventBus } from "../infra/eventBus";
 import { MatchingEngine } from "../core/matchingEngine";
 
@@ -8,6 +9,7 @@ import { MatchingEngine } from "../core/matchingEngine";
 type ServerDeps = {
   engine: MatchingEngine;
   openOrdersView: OpenOrdersView;
+  tradesView: TradesView;
   eventBus: EventBus;
   port?: number;
 };
@@ -31,6 +33,7 @@ type ServerDeps = {
 export function createServer({
   engine,
   openOrdersView,
+  tradesView,
   eventBus,
   port = 3000,
 }: ServerDeps) {
@@ -41,9 +44,11 @@ export function createServer({
 
       // ---- READ MODEL: Open Orders ----
       if (req.method === "GET" && url.pathname === "/orders/open") {
+        const id = url.searchParams.get("id") ?? undefined;
         const side = url.searchParams.get("side");
         const symbol = url.searchParams.get("symbol") ?? undefined;
         const orders = openOrdersView.list({
+          id,
           side: side === "BUY" || side === "SELL" ? side : undefined,
           symbol,
         });
@@ -52,6 +57,23 @@ export function createServer({
             {
               openOrders: orders,
               pendingEvents: eventBus.size(), // backlog visible
+              timestamp: new Date().toISOString(),
+            },
+            null,
+            2
+          ),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // ---- READ MODEL: Trades ----
+      if (req.method === "GET" && url.pathname === "/trades") {
+        const trades = tradesView.list();
+        return new Response(
+          JSON.stringify(
+            {
+              trades,
+              pendingEvents: eventBus.size(),
               timestamp: new Date().toISOString(),
             },
             null,
