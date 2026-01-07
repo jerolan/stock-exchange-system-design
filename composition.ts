@@ -33,19 +33,20 @@ export function composeApp() {
     eventBus,
   });
 
-  // ---- Views / Projections ----
-  const views = createViews({
-    eventBus,
-    applyIntervalMs: 500, // Simulated lag for eventual consistency demo
-    batchSize: 1,
-  });
-
   // ---- Replay (bootstrap WAL) ----
   const history: Event[] = wal.replay();
   console.log(`🔁 Replaying ${history.length} events from WAL`);
   for (const event of history) {
     engine.process(event, { mode: "replay" });
   }
+
+  // ---- Views / Projections ----
+  const views = createViews({
+    initialEvents: history,
+    eventBus,
+    applyIntervalMs: 500, // Simulated lag for eventual consistency demo
+    batchSize: 1,
+  });
 
   // ---- Start projections ----
   views.start();
