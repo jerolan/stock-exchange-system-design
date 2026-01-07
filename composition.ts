@@ -63,6 +63,7 @@ export function composeApp() {
   const server = createServer({
     engine,
     openOrdersView: views.openOrdersView,
+    tradesView: views.tradesView,
     eventBus,
     port: 3000,
   });
