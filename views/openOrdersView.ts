@@ -4,6 +4,7 @@ import type { Event, Order, Side } from "../core/types";
  * Filters for querying open orders.
  */
 export type OpenOrdersFilters = {
+  id?: string;
   side?: Side;
   symbol?: string;
 };
@@ -109,6 +110,9 @@ export class OpenOrdersView {
     }
     if (filters?.symbol) {
       result = result.filter((o) => o.symbol === filters.symbol);
+    }
+    if (filters?.id) {
+      result = result.filter((o) => o.id === filters.id);
     }
     // Sort for presentation (not market priority)
     return result.sort((a, b) => a.ts - b.ts);
