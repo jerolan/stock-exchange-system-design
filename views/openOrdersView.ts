@@ -1,9 +1,9 @@
-import type { Order, Side } from "../core/types";
+import type { Event, Order, Side } from "../core/types";
 
 /**
  * Filters for querying open orders.
  */
-type Filters = {
+export type OpenOrdersFilters = {
   side?: Side;
   symbol?: string;
 };
@@ -52,6 +52,48 @@ export class OpenOrdersView {
     }
   }
 
+  /**
+   * Applies a canonical event to this view.
+   * Centralizes event → projection logic (used by both bootstrap and live projection).
+   *
+   * @param event - The event to apply.
+   */
+  apply(event: Event) {
+    switch (event.type) {
+      case "NEW_ORDER":
+        console.log(`[VIEW] new order ${event.order.id}`);
+        this.onNewOrder(event.order);
+        return;
+      case "CANCEL_ORDER":
+        console.log(`[VIEW] cancel ${event.orderId}`);
+        this.onCancel(event.orderId);
+        return;
+      case "TRADE": {
+        console.log(`[VIEW] trade applied ${event.buyId} <-> ${event.sellId}`);
+        const applyFillQty = (orderId: string, fillQty: number) => {
+          const order = this.orders.get(orderId);
+          if (!order) return;
+          const remainingQty = order.qty - fillQty;
+          this.onFill(orderId, remainingQty);
+        };
+
+        applyFillQty(event.buyId, event.qty);
+        applyFillQty(event.sellId, event.qty);
+        return;
+      }
+    }
+  }
+
+  /**
+   * Applies a batch of events to this view.
+   * @param events - Events to apply.
+   */
+  applyAll(events: Event[]) {
+    for (const event of events) {
+      this.apply(event);
+    }
+  }
+
   // -------- Queries --------
 
   /**
@@ -60,7 +102,7 @@ export class OpenOrdersView {
    * @param filters - Optional filters for side and symbol.
    * @returns Array of open orders.
    */
-  list(filters?: Filters): Order[] {
+  list(filters?: OpenOrdersFilters): Order[] {
     let result = Array.from(this.orders.values());
     if (filters?.side) {
       result = result.filter((o) => o.side === filters.side);

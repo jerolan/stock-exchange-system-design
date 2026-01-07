@@ -6,6 +6,7 @@ import type { Event } from "../core/types";
  * Dependencies required to create views/projections.
  */
 type ViewsDeps = {
+  initialEvents: Event[];
   eventBus: EventBus;
   /** Artificial latency in ms between event applications. */
   applyIntervalMs?: number;
@@ -19,6 +20,7 @@ type ViewsDeps = {
  * Applies events from the EventBus to read models with artificial lag,
  * simulating DB/network latency and eventual consistency.
  *
+ * @param initialEvents - Initial event history to bootstrap views.
  * @param eventBus - The event bus to drain events from.
  * @param applyIntervalMs - Artificial latency in ms (default: 500).
  * @param batchSize - Number of events per tick (default: 1).
@@ -30,11 +32,13 @@ type ViewsDeps = {
  * ```
  */
 export function createViews({
+  initialEvents,
   eventBus,
   applyIntervalMs = 500,
   batchSize = 1,
 }: ViewsDeps) {
   const openOrdersView = new OpenOrdersView();
+  openOrdersView.applyAll(initialEvents);
 
   /**
    * Starts the projector loop, applying events from the EventBus to views.
@@ -54,21 +58,7 @@ export function createViews({
    * @param event - The event to apply.
    */
   function applyEvent(event: Event) {
-    switch (event.type) {
-      case "NEW_ORDER":
-        openOrdersView.onNewOrder(event.order);
-        console.log(`[VIEW] new order ${event.order.id}`);
-        break;
-      case "CANCEL_ORDER":
-        openOrdersView.onCancel(event.orderId);
-        console.log(`[VIEW] cancel ${event.orderId}`);
-        break;
-      case "TRADE":
-        openOrdersView.onFill(event.buyId, 0);
-        openOrdersView.onFill(event.sellId, 0);
-        console.log(`[VIEW] trade applied ${event.buyId} <-> ${event.sellId}`);
-        break;
-    }
+    openOrdersView.apply(event);
   }
 
   return {
